@@ -1,9 +1,11 @@
 package customer
 
+import "context"
+
 type Repository interface {
-	GetAll() []Customer
-	GetById(id int) (Customer, bool)
-	Create(customer Customer) Customer
+	GetAll(ctx context.Context) ([]Customer, error)
+	GetById(ctx context.Context, id int64) (Customer, error)
+	Create(ctx context.Context, customer Customer) (Customer, error)
 }
 
 type MemoryRepository struct {

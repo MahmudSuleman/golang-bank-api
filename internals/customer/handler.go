@@ -19,7 +19,11 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) GetAll(w http.ResponseWriter, r *http.Request) {
-	customers := h.service.GetAll()
+	customers, err := h.service.GetAll(r.Context())
+	if err != nil {
+		http.Error(w, "Failed to retrieve customers", http.StatusBadRequest)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(customers)
 }
@@ -27,13 +31,13 @@ func (h *Handler) GetAll(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) GetById(w http.ResponseWriter, r *http.Request) {
 	idString := chi.URLParam(r, "id")
 
-	id, err := strconv.Atoi(idString)
+	id, err := strconv.ParseInt(idString, 10, 64)
 	if err != nil {
 		http.Error(w, "invalid customer id", http.StatusBadRequest)
 		return
 	}
-	customer, found := h.service.GetById(id)
-	if !found {
+	customer, err := h.service.GetById(r.Context(), id)
+	if err != nil {
 		http.Error(w, "customer not found", http.StatusNotFound)
 		return
 	}
@@ -49,7 +53,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid request payload", http.StatusBadRequest)
 		return
 	}
-	created := h.service.Create(customer)
+	created, err := h.service.Create(r.Context(), customer)
+	if err != nil {
+		http.Error(w, "Failed to create customer", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 
