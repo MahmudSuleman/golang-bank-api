@@ -2,6 +2,7 @@ package customer
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -46,15 +47,20 @@ func (h *Handler) GetById(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
-	var customer Customer
 
-	err := json.NewDecoder(r.Body).Decode(&customer)
+	var request CreateCustomerRequest
+
+	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		http.Error(w, "invalid request payload", http.StatusBadRequest)
 		return
 	}
-	created, err := h.service.Create(r.Context(), customer)
+	created, err := h.service.Create(r.Context(), request)
 	if err != nil {
+		if errors.Is(err, ErrInvalidCustomer) {
+			http.Error(w, "Invalid customer data", http.StatusBadRequest)
+			return
+		}
 		http.Error(w, "Failed to create customer", http.StatusInternalServerError)
 		return
 	}

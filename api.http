@@ -7,12 +7,29 @@ GET http://localhost:8080/customers/1
 
 
 ###
+#customers get by id
+GET http://localhost:8080/customers/1/accounts
+
+
+###
 # customer creat
 POST http://localhost:8080/customers
 Content-Type: application/json
 
 {
-  "first_name": "Mahmud",
-  "last_name": "Wunnam",
-  "email": "mahmud@example.com"
+  "first_name": "Mudi",
+  "last_name": "Sheikh",
+  "email": "mudi@example.com"
+}
+
+
+###
+# customer account create
+POST http://localhost:8080/accounts
+Content-Type: application/json
+
+{
+  "customer_id": 1000,
+  "account_type": "SAVINGS",
+  "currency": "GHS"
 }
