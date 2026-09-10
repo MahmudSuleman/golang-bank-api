@@ -2,6 +2,7 @@ package account
 
 import (
 	"bank-api/internals/customer"
+	"bank-api/internals/response"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -23,36 +24,30 @@ func NewHandler(service *Service) *Handler {
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	customerIDString := chi.URLParam(r, "customerID")
 
-	customerID, err := strconv.ParseInt(
-		customerIDString,
-		10,
-		64,
-	)
+	customerID, err := strconv.ParseInt(customerIDString, 10, 64)
 
 	if err != nil || customerID <= 0 {
-		http.Error(
-			w,
-			"Invalid customer ID",
-			http.StatusBadRequest,
-		)
+		response.ErrorJSON(w, http.StatusBadRequest, "INVALID_CUSTOMER_ID", "Invalid customer id")
 		return
 	}
+
 	var request CreateAccountRequest
 
 	err = json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		http.Error(w, "invalid request payload", http.StatusBadRequest)
+		response.ErrorJSON(w, http.StatusBadRequest, "INVALID_JSON", "Invalid JSON request body")
+		return
 	}
 
 	account, err := h.service.Create(r.Context(), customerID, request)
 	if err != nil {
 		if errors.Is(err, ErrCustomerNotFound) {
-			http.Error(w, "Customer not found", http.StatusNotFound)
+			response.ErrorJSON(w, http.StatusNotFound, "CUSTOMER_NOT_FOUND", "Customer not found")
 			return
 		}
 
 		if errors.Is(err, ErrInvalidAccount) {
-			http.Error(w, "Invalid account data", http.StatusInternalServerError)
+			response.ErrorJSON(w, http.StatusBadRequest, "INVALID_ACCOUNT", "Invalid account data")
 			return
 		}
 
@@ -60,31 +55,12 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Invalid account data", http.StatusInternalServerError)
 			return
 		}
-		http.Error(w, "Failed to create account", http.StatusInternalServerError)
+		response.ErrorJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "An internal error occurred")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(account)
-}
-
-func (h *Handler) GetById(w http.ResponseWriter, r *http.Request) {
-	idString := chi.URLParam(r, "id")
-
-	id, err := strconv.ParseInt(idString, 10, 64)
-
-	if err != nil {
-		http.Error(w, "invalid customer id", http.StatusBadRequest)
-		return
-	}
-
-	account, err := h.service.GetById(r.Context(), id)
-	if err != nil {
-		http.Error(w, "Failed to retrieve account", http.StatusNotFound)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(account)
+	response.JSON(w, http.StatusCreated, account)
 }
 
 func (h *Handler) GetByCustomerId(w http.ResponseWriter, r *http.Request) {
@@ -93,20 +69,44 @@ func (h *Handler) GetByCustomerId(w http.ResponseWriter, r *http.Request) {
 	customerID, err := strconv.ParseInt(customerIdString, 10, 64)
 
 	if err != nil {
-		http.Error(w, "invalid customer id", http.StatusBadRequest)
+		response.ErrorJSON(
+			w,
+			http.StatusBadRequest,
+			"INVALID_CUSTOMER_ID",
+			"Invalid customer ID",
+		)
 		return
 	}
 
-	account, err := h.service.GetByCustomerId(r.Context(), customerID)
+	accounts, err := h.service.GetByCustomerId(r.Context(), customerID)
 	if err != nil {
 		if errors.Is(err, ErrCustomerNotFound) {
-			http.Error(w, "account not found", http.StatusNotFound)
+			response.ErrorJSON(w, http.StatusNotFound, "CUSTOMER_NOT_FOUND", "Customer not found")
 			return
 		}
 
-		http.Error(w, "account not found", http.StatusNotFound)
+		response.ErrorJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "An internal error occurred")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(account)
+	response.JSON(w, http.StatusOK, accounts)
+}
+
+func (h *Handler) GetById(w http.ResponseWriter, r *http.Request) {
+	idString := chi.URLParam(r, "id")
+
+	id, err := strconv.ParseInt(idString, 10, 64)
+
+	if err != nil || id <= 0 {
+		response.ErrorJSON(w, http.StatusBadRequest, "INVALID_CUSTOMER_ID", "Invalid customer ID")
+		return
+	}
+
+	account, err := h.service.GetById(r.Context(), id)
+	if err != nil {
+		response.ErrorJSON(w, http.StatusNotFound, "ACCOUNT_NOT_FOUND", "Account not found")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	response.JSON(w, http.StatusOK, account)
 }
