@@ -17,6 +17,7 @@ func NewRouter(customerHandler *customer.Handler, accountHandler *account.Handle
 	r.Post("/customers", customerHandler.Create)
 	r.Get("/customers/{id}", customerHandler.GetById)
 	r.Get("/customers/{id}/accounts", accountHandler.GetByCustomerId)
+	r.Post("/customers/{id}/accounts", accountHandler.Create)
 
 	r.Post("/accounts", accountHandler.Create)
 	r.Get("/accounts/{id}", accountHandler.GetById)

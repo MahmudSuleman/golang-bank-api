@@ -21,16 +21,36 @@ func NewHandler(service *Service) *Handler {
 }
 
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
+	customerIDString := chi.URLParam(r, "customerID")
 
+	customerID, err := strconv.ParseInt(
+		customerIDString,
+		10,
+		64,
+	)
+
+	if err != nil || customerID <= 0 {
+		http.Error(
+			w,
+			"Invalid customer ID",
+			http.StatusBadRequest,
+		)
+		return
+	}
 	var request CreateAccountRequest
 
-	err := json.NewDecoder(r.Body).Decode(&request)
+	err = json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
 		http.Error(w, "invalid request payload", http.StatusBadRequest)
 	}
 
-	account, err := h.service.Create(r.Context(), request)
+	account, err := h.service.Create(r.Context(), customerID, request)
 	if err != nil {
+		if errors.Is(err, ErrCustomerNotFound) {
+			http.Error(w, "Customer not found", http.StatusNotFound)
+			return
+		}
+
 		if errors.Is(err, ErrInvalidAccount) {
 			http.Error(w, "Invalid account data", http.StatusInternalServerError)
 			return
@@ -60,10 +80,6 @@ func (h *Handler) GetById(w http.ResponseWriter, r *http.Request) {
 
 	account, err := h.service.GetById(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, ErrAccountNotFound) {
-			http.Error(w, "account not found", http.StatusNotFound)
-			return
-		}
 		http.Error(w, "Failed to retrieve account", http.StatusNotFound)
 		return
 	}
@@ -72,7 +88,7 @@ func (h *Handler) GetById(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetByCustomerId(w http.ResponseWriter, r *http.Request) {
-	customerIdString := chi.URLParam(r, "customerID")
+	customerIdString := chi.URLParam(r, "id")
 
 	customerID, err := strconv.ParseInt(customerIdString, 10, 64)
 
@@ -81,11 +97,15 @@ func (h *Handler) GetByCustomerId(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	account, err := h.service.GetById(r.Context(), customerID)
+	account, err := h.service.GetByCustomerId(r.Context(), customerID)
 	if err != nil {
-
+		if errors.Is(err, ErrCustomerNotFound) {
 			http.Error(w, "account not found", http.StatusNotFound)
-		 return
+			return
+		}
+
+		http.Error(w, "account not found", http.StatusNotFound)
+		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(account)

@@ -6,6 +6,7 @@ type Repository interface {
 	GetAll(ctx context.Context) ([]Customer, error)
 	GetById(ctx context.Context, id int64) (Customer, error)
 	Create(ctx context.Context, customer Customer) (Customer, error)
+	Exists(ctx context.Context, id int64) (bool, error)
 }
 
 type MemoryRepository struct {

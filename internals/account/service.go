@@ -8,31 +8,47 @@ import (
 	"math/rand"
 	"strings"
 	"time"
-
-	"github.com/jackc/pgx/v5"
 )
 
-var ErrInvalidAccount = errors.New("invalid account")
-var ErrAccountNotFound = errors.New("account not found")
+var (
+	ErrInvalidAccount   = errors.New("invalid account")
+	ErrAccountNotFound  = errors.New("account not found")
+	ErrCustomerNotFound = errors.New("customer not found")
+)
 
+type CustomerChecker interface {
+	Exists(ctx context.Context, id int64) (bool, error)
+}
 type Service struct {
 	repository         Repository
 	customerRepository customer.Repository
+	customerChecker    CustomerChecker
 }
 
-func NewService(repository Repository, customerRepository customer.Repository) *Service {
+func NewService(repository Repository, customerChecker CustomerChecker) *Service {
 	return &Service{
-		repository:         repository,
-		customerRepository: customerRepository,
+		repository:      repository,
+		customerChecker: customerChecker,
 	}
 }
 
-func (s *Service) Create(ctx context.Context, request CreateAccountRequest) (Account, error) {
+func (s *Service) Create(ctx context.Context,customerId int64, request CreateAccountRequest) (Account, error) {
+
+	exists , err := s.customerChecker.Exists(ctx, customerId)
+	if err != nil {
+		return Account{}, err
+	}
+	if !exists {
+		return Account{}, ErrCustomerNotFound
+	}
 	request.AccountType = strings.ToUpper(strings.TrimSpace(request.AccountType))
+
 	request.Currency = strings.ToUpper(strings.TrimSpace(request.Currency))
+
 	if request.CustomerID <= 0 {
 		return Account{}, ErrInvalidAccount
 	}
+
 	if request.AccountType != AccountTypeCurrent && request.AccountType != AccountTypeSavings {
 		return Account{}, ErrInvalidAccount
 	}
@@ -46,34 +62,27 @@ func (s *Service) Create(ctx context.Context, request CreateAccountRequest) (Acc
 	}
 
 	account := Account{
-		CustomerID:    request.CustomerID,
+		CustomerID:    customerId,
 		AccountNumber: generateAccountNumber(),
 		AccountType:   request.AccountType,
 		Currency:      request.Currency,
 		Balance:       0,
 		Status:        AccountStatusActive,
 	}
-
-	_, err := s.customerRepository.GetById(ctx, request.CustomerID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return Account{}, customer.ErrCustomerNotFound
-		}
-		return Account{}, err
-	}
 	return s.repository.Create(ctx, account)
 }
 
 func (s *Service) GetById(ctx context.Context, customerId int64) (Account, error) {
-	if customerId <= 0 {
-		return Account{}, ErrInvalidAccount
-	}
-
 	return s.repository.GetById(ctx, customerId)
 }
 func (s *Service) GetByCustomerId(ctx context.Context, customerId int64) ([]Account, error) {
-	if customerId <= 0 {
-		return nil, ErrInvalidAccount
+	exists, err := s.customerChecker.Exists(ctx, customerId)
+
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, ErrCustomerNotFound
 	}
 
 	return s.repository.GetByCustomerID(ctx, customerId)

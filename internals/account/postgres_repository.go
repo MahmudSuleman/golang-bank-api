@@ -83,6 +83,7 @@ func (r PostgresRepository) GetByCustomerID(ctx context.Context, customerId int6
 			&account.AccountType,
 			&account.Currency,
 			&account.Balance,
+			&account.Status,
 		)
 
 		if err != nil {

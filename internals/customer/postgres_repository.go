@@ -10,6 +10,20 @@ type PostgresRepository struct {
 	db *pgxpool.Pool
 }
 
+func (r *PostgresRepository) Exists(ctx context.Context, id int64) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM customers
+			WHERE id = $1
+		)
+`, id).Scan(&exists)
+	if err != nil {
+		return false, err
+	}
+	return exists, nil
+}
+
 func (r *PostgresRepository) GetAll(ctx context.Context) ([]Customer, error) {
 	rows, err := r.db.Query(ctx,
 		`SELECT id, first_name, last_name, email
