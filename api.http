@@ -37,3 +37,23 @@ Content-Type: application/json
 ###
 # customer accounts get
 GET http://localhost:8080/accounts/12121
+
+###
+# create account
+POST http://localhost:8080/auth/register
+Content-Type: application/json
+
+{
+    "customer_id": 1,
+    "email": "john@example.com",
+    "password": "mypassword123"
+}
+###
+# login account
+POST http://localhost:8080/auth/login
+Content-Type: application/json
+
+{
+  "email": "john@example.com",
+  "password": "mypassword1234"
+}

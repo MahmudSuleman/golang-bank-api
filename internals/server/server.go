@@ -3,12 +3,13 @@ package server
 import (
 	"bank-api/internals/account"
 	"bank-api/internals/customer"
+	"bank-api/internals/user"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 )
 
-func NewRouter(customerHandler *customer.Handler, accountHandler *account.Handler) http.Handler {
+func NewRouter(customerHandler *customer.Handler, accountHandler *account.Handler, userHandler *user.Handler) http.Handler {
 	r := chi.NewRouter()
 
 	r.Get("/health", healthHandler)
@@ -21,6 +22,9 @@ func NewRouter(customerHandler *customer.Handler, accountHandler *account.Handle
 
 	r.Post("/accounts", accountHandler.Create)
 	r.Get("/accounts/{id}", accountHandler.GetById)
+
+	r.Post("/auth/register", userHandler.Register)
+	r.Post("/auth/login", userHandler.Login)
 
 	return r
 }
