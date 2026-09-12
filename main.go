@@ -2,6 +2,7 @@ package main
 
 import (
 	"bank-api/internals/account"
+	"bank-api/internals/auth"
 	"bank-api/internals/customer"
 	"bank-api/internals/database"
 	"bank-api/internals/server"
@@ -10,6 +11,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 )
 
 func main() {
@@ -25,6 +27,8 @@ func main() {
 
 	defer db.Close()
 
+	jwtManager := auth.NewJWTManager("secret", 15*time.Minute)
+
 	customerRepository := customer.NewPostgresRepository(db)
 	customerService := customer.NewService(customerRepository)
 	customerHandler := customer.NewHandler(customerService)
@@ -34,7 +38,7 @@ func main() {
 	accountHandler := account.NewHandler(accountService)
 
 	userRepository := user.NewPostgresRepository(db)
-	userService := user.NewService(userRepository)
+	userService := user.NewService(userRepository, customerRepository, jwtManager)
 	userHandler := user.NewHandler(userService)
 
 	router := server.NewRouter(customerHandler, accountHandler, userHandler)

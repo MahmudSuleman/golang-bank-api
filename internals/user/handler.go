@@ -32,7 +32,7 @@ func (h *Handler) Register(
 		return
 	}
 
-	user, err := h.service.Create(
+	user, err := h.service.Register(
 		r.Context(),
 		request,
 	)
@@ -44,6 +44,16 @@ func (h *Handler) Register(
 				http.StatusBadRequest,
 				"INVALID_USER",
 				"Invalid user data",
+			)
+			return
+		}
+
+		if errors.Is(err, ErrCustomerNotFound) {
+			response.ErrorJSON(
+				w,
+				http.StatusBadRequest,
+				"CUSTOMER_NOT_FOUND",
+				"Customer does not exist",
 			)
 			return
 		}
@@ -81,7 +91,7 @@ func (h *Handler) Login(
 		return
 	}
 
-	user, err := h.service.Login(r.Context(), request)
+	loginResponse, err := h.service.Login(r.Context(), request)
 
 	if err != nil {
 		if errors.Is(err, ErrInvalidCredentials) {
@@ -93,5 +103,5 @@ func (h *Handler) Login(
 		return
 	}
 
-	response.JSON(w, http.StatusOK, user)
+	response.JSON(w, http.StatusOK, loginResponse)
 }

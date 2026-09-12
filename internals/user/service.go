@@ -1,6 +1,7 @@
 package user
 
 import (
+	"bank-api/internals/auth"
 	"context"
 	"errors"
 	"strings"
@@ -11,21 +12,36 @@ import (
 var (
 	ErrInvalidUser        = errors.New("invalid user")
 	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrCustomerNotFound   = errors.New("customer not found")
 )
 
+type CustomerChecker interface {
+	Exists(ctx context.Context, id int64) (bool, error)
+}
 type Service struct {
-	repository Repository
+	repository      Repository
+	customerChecker CustomerChecker
+	jwtManage       *auth.JWTManager
 }
 
-func NewService(repository Repository) *Service {
-	return &Service{repository: repository}
+func NewService(repository Repository, customerChecker CustomerChecker, jwtManage *auth.JWTManager) *Service {
+	return &Service{repository: repository, customerChecker: customerChecker, jwtManage: jwtManage}
 }
 
-func (s *Service) Create(ctx context.Context, request RegisterRequest) (User, error) {
+func (s *Service) Register(ctx context.Context, request RegisterRequest) (User, error) {
 	request.Email = strings.ToLower(strings.TrimSpace(request.Email))
 
 	if request.CustomerId <= 0 || request.Email == "" || len(request.Password) < 8 {
 		return User{}, ErrInvalidUser
+	}
+
+	exists, err := s.customerChecker.Exists(ctx, request.CustomerId)
+	if err != nil {
+		return User{}, err
+	}
+
+	if !exists {
+		return User{}, ErrCustomerNotFound
 	}
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
@@ -44,20 +60,25 @@ func (s *Service) Create(ctx context.Context, request RegisterRequest) (User, er
 
 }
 
-func (s *Service) Login(ctx context.Context, request LoginRequest) (User, error) {
+func (s *Service) Login(ctx context.Context, request LoginRequest) (LoginResponse, error) {
 	email := strings.ToLower(strings.TrimSpace(request.Email))
 	user, err := s.repository.GetByEmail(ctx, email)
 
 	if err != nil {
-		return User{}, ErrInvalidCredentials
+		return LoginResponse{}, ErrInvalidCredentials
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(request.Password))
 	if err != nil {
-		return User{}, ErrInvalidCredentials
+		return LoginResponse{}, ErrInvalidCredentials
 	}
 
-	return user, nil
+	accessToken, err := s.jwtManage.GenerateToken(user.Id, user.CustomerId)
 
+	if err != nil {
+		return LoginResponse{}, err
+	}
+
+	return LoginResponse{User: user, AccessToken: accessToken}, nil
 
 }
