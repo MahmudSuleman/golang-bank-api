@@ -2,29 +2,45 @@ package server
 
 import (
 	"bank-api/internals/account"
+	"bank-api/internals/auth"
 	"bank-api/internals/customer"
 	"bank-api/internals/user"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
-func NewRouter(customerHandler *customer.Handler, accountHandler *account.Handler, userHandler *user.Handler) http.Handler {
+func NewRouter(customerHandler *customer.Handler,
+	accountHandler *account.Handler,
+	userHandler *user.Handler,
+	jwtManager *auth.JWTManager,
+) http.Handler {
 	r := chi.NewRouter()
 
-	r.Get("/health", healthHandler)
-
-	r.Get("/customers", customerHandler.GetAll)
-	r.Post("/customers", customerHandler.Create)
-	r.Get("/customers/{id}", customerHandler.GetById)
-	r.Get("/customers/{id}/accounts", accountHandler.GetByCustomerId)
-	r.Post("/customers/{id}/accounts", accountHandler.Create)
-
-	r.Post("/accounts", accountHandler.Create)
-	r.Get("/accounts/{id}", accountHandler.GetById)
+	r.Get(
+		"/swagger/*",
+		httpSwagger.Handler(
+			httpSwagger.URL(
+				"http://localhost:8080/swagger/doc.json",
+			),
+		),
+	)
 
 	r.Post("/auth/register", userHandler.Register)
 	r.Post("/auth/login", userHandler.Login)
+
+	r.Group(func(r chi.Router) {
+		r.Use(jwtManager.Authenticate)
+		r.Get("/customers", customerHandler.GetAll)
+		r.Post("/customers", customerHandler.Create)
+		r.Get("/customers/{id}", customerHandler.GetById)
+		r.Get("/customers/{id}/accounts", accountHandler.GetByCustomerId)
+		r.Post("/customers/{id}/accounts", accountHandler.Create)
+
+		r.Post("/accounts", accountHandler.Create)
+		r.Get("/accounts/{id}", accountHandler.GetById)
+	})
 
 	return r
 }

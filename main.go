@@ -12,8 +12,18 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	_ "bank-api/docs"
 )
 
+// @title Bank API
+// @version 1.0
+// @description Banking REST API built with Go.
+// @host localhost:8080
+// @BasePath /
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 	ctx := context.Background()
 
@@ -41,7 +51,7 @@ func main() {
 	userService := user.NewService(userRepository, customerRepository, jwtManager)
 	userHandler := user.NewHandler(userService)
 
-	router := server.NewRouter(customerHandler, accountHandler, userHandler)
+	router := server.NewRouter(customerHandler, accountHandler, userHandler, jwtManager)
 	fmt.Println("Bank API running on http://localhost:8080")
 	err = http.ListenAndServe(":8080", router)
 	if err != nil {

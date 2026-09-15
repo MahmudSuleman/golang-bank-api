@@ -15,6 +15,18 @@ func NewHandler(service *Service) *Handler {
 	return &Handler{service: service}
 }
 
+// Register creates a user account.
+// @Summary Register
+// @Description Register a customer for API access.
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body RegisterRequest true "Registration details"
+// @Success 201 {object} User
+// @Failure 400 {object} response.ErrorResponse
+// @Failure 404 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Router /auth/register [post]
 func (h *Handler) Register(
 	w http.ResponseWriter,
 	r *http.Request,
@@ -74,6 +86,18 @@ func (h *Handler) Register(
 	)
 }
 
+// Login authenticates a user.
+// @Summary Login
+// @Description Authenticate using email and password.
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body LoginRequest true "Login credentials"
+// @Success 200 {object} LoginResponse
+// @Failure 400 {object} response.ErrorResponse
+// @Failure 401 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Router /auth/login [post]
 func (h *Handler) Login(
 	w http.ResponseWriter,
 	r *http.Request,

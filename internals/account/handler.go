@@ -92,6 +92,18 @@ func (h *Handler) GetByCustomerId(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, accounts)
 }
 
+// GetByID retrieves an account.
+// @Summary Get account
+// @Description Get a bank account by ID.
+// @Tags Accounts
+// @Produce json
+// @Security BearerAuth
+// @Param id path int64 true "Account ID"
+// @Success 200 {object} Account
+// @Failure 401 {object} response.ErrorResponse
+// @Failure 404 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Router /accounts/{id} [get]
 func (h *Handler) GetById(w http.ResponseWriter, r *http.Request) {
 	idString := chi.URLParam(r, "id")
 
