@@ -1,19 +1,23 @@
+@baseUrl = http://localhost:8080
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJjdXN0b21lcl9pZCI6MSwiZXhwIjoxNzg5NjU3NDg4LCJpYXQiOjE3ODk2NTY1ODh9.5IQjFOnQ9EXhDxWncw1fcD_-OWBTscEW3B4hKgbNpOI
+
 // customers get
-GET http://localhost:8080/customers
+GET {{baseUrl}}/customers
 
 ###
 #customers get by id
-GET http://localhost:8080/customers/1
+GET {{baseUrl}}/customers/1
 
 
 ###
 #customers get by id
-GET http://localhost:8080/customers/1/accounts
+GET {{baseUrl}}/customers/1/accounts
+Authorization: Bearer {{token}}
 
 
 ###
 # customer creat
-POST http://localhost:8080/customers
+POST {{baseUrl}}/customers
 Content-Type: application/json
 
 {
@@ -25,7 +29,7 @@ Content-Type: application/json
 
 ###
 # customer accounts create
-POST http://localhost:8080/accounts
+POST {{baseUrl}}/accounts
 Content-Type: application/json
 
 {
@@ -36,25 +40,35 @@ Content-Type: application/json
 
 ###
 # customer accounts get
-GET http://localhost:8080/accounts/1
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJjdXN0b21lcl9pZCI6MSwiZXhwIjoxNzg5NTA4MDQwLCJpYXQiOjE3ODk1MDcxNDB9.Lhnef5ehS6D1Cq4k94pnok98djAFlaiG9t8OezpYaIw
+GET {{baseUrl}}/accounts/1
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJjdXN0b21lcl9pZCI6MSwiZXhwIjoxNzg5NjUzODMxLCJpYXQiOjE3ODk2NTI5MzF9.DRrJdDa7Vc-8tzsvDVoIrzCTqcCtcnxszbmuNZhvXho
 
 ###
 # create account
-POST http://localhost:8080/auth/register
+POST {{baseUrl}}/auth/register
 Content-Type: application/json
 
 {
-    "customer_id": 1,
-    "email": "john@example.com",
-    "password": "mypassword123"
+  "customer_id": 1,
+  "email": "john@example.com",
+  "password": "mypassword123"
 }
+
 ###
 # login account
-POST http://localhost:8080/auth/login
+POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
   "email": "john@example.com",
   "password": "mypassword123"
+}
+
+###
+POST {{baseUrl}}/accounts/1/deposit
+Content-Type: application/json
+Authorization: Bearer {{token}}
+
+{
+  "amount": 50000
 }

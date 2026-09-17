@@ -16,6 +16,10 @@ type CreateAccountRequest struct {
 	Currency    string `json:"currency"`
 }
 
+type MoneyRequest struct {
+	Amount int64 `json:"amount"`
+}
+
 const (
 	AccountTypeSavings = "SAVINGS"
 	AccountTypeCurrent = "CURRENT"

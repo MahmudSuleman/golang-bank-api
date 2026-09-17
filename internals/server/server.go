@@ -18,14 +18,7 @@ func NewRouter(customerHandler *customer.Handler,
 ) http.Handler {
 	r := chi.NewRouter()
 
-	r.Get(
-		"/swagger/*",
-		httpSwagger.Handler(
-			httpSwagger.URL(
-				"http://localhost:8080/swagger/doc.json",
-			),
-		),
-	)
+	r.Get("/swagger/*", httpSwagger.Handler(httpSwagger.URL("http://localhost:8080/swagger/doc.json")))
 
 	r.Post("/auth/register", userHandler.Register)
 	r.Post("/auth/login", userHandler.Login)
@@ -38,8 +31,13 @@ func NewRouter(customerHandler *customer.Handler,
 		r.Get("/customers/{id}/accounts", accountHandler.GetByCustomerId)
 		r.Post("/customers/{id}/accounts", accountHandler.Create)
 
-		r.Post("/accounts", accountHandler.Create)
-		r.Get("/accounts/{id}", accountHandler.GetById)
+		r.Route("/accounts", func(r chi.Router) {
+			r.Post("/", accountHandler.Create)
+			r.Get("/", accountHandler.GetByCustomerId)
+			r.Get("/{id}", accountHandler.GetById)
+			r.Post("/{id}/deposit", accountHandler.Deposit)
+		})
+
 	})
 
 	return r

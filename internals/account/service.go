@@ -14,6 +14,11 @@ var (
 	ErrInvalidAccount   = errors.New("invalid account")
 	ErrAccountNotFound  = errors.New("account not found")
 	ErrCustomerNotFound = errors.New("customer not found")
+	ErrForbidden        = errors.New("forbidden")
+
+	ErrInvalidAmount  = errors.New("invalid amount")
+	ErrAccountBlocked = errors.New("account is blocked")
+	ErrAccountClosed  = errors.New("account is closed")
 )
 
 type CustomerChecker interface {
@@ -31,10 +36,34 @@ func NewService(repository Repository, customerChecker CustomerChecker) *Service
 		customerChecker: customerChecker,
 	}
 }
+func (s *Service) Deposit(ctx context.Context, id int64, request MoneyRequest) (Account, error) {
+	if id <= 0 {
+		return Account{}, ErrInvalidAccount
+	}
 
-func (s *Service) Create(ctx context.Context,customerId int64, request CreateAccountRequest) (Account, error) {
+	if request.Amount <= 0 {
+		return Account{}, ErrInvalidAmount
+	}
 
-	exists , err := s.customerChecker.Exists(ctx, customerId)
+	account, err := s.repository.GetById(ctx, id)
+
+	if err != nil {
+		return Account{}, err
+	}
+
+	switch account.Status {
+	case AccountStatusBlocked:
+		return Account{}, ErrAccountBlocked
+	case AccountStatusClosed:
+		return Account{}, ErrAccountClosed
+	}
+
+	return s.repository.Deposit(ctx, id, request.Amount)
+
+}
+func (s *Service) Create(ctx context.Context, customerId int64, request CreateAccountRequest) (Account, error) {
+
+	exists, err := s.customerChecker.Exists(ctx, customerId)
 	if err != nil {
 		return Account{}, err
 	}
@@ -86,6 +115,20 @@ func (s *Service) GetByCustomerId(ctx context.Context, customerId int64) ([]Acco
 	}
 
 	return s.repository.GetByCustomerID(ctx, customerId)
+}
+
+func (s *Service) GetByIdForCustomer(ctx context.Context, accountId int64, customerId int64) (Account, error) {
+	account, err := s.repository.GetById(ctx, accountId)
+
+	if err != nil {
+		return Account{}, err
+	}
+
+	if account.CustomerID != customerId {
+		return Account{}, ErrForbidden
+	}
+
+	return account, nil
 }
 func generateAccountNumber() string {
 	source := rand.NewSource(time.Now().UnixNano())

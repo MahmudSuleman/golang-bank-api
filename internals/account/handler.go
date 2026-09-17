@@ -1,6 +1,7 @@
 package account
 
 import (
+	"bank-api/internals/auth"
 	"bank-api/internals/customer"
 	"bank-api/internals/response"
 	"encoding/json"
@@ -21,13 +22,58 @@ func NewHandler(service *Service) *Handler {
 	}
 }
 
+func (h *Handler) Deposit(w http.ResponseWriter, r *http.Request) {
+	accountIdString := chi.URLParam(r, "id")
+	accountId, err := strconv.ParseInt(accountIdString, 10, 64)
+
+	if err != nil || accountId <= 0 {
+		response.ErrorJSON(w, http.StatusBadRequest, "INVALID_ACCOUNT_ID", "Invalid account id")
+	}
+
+	var request MoneyRequest
+
+	if err = json.NewDecoder(r.Body).Decode(&request); err != nil {
+		response.ErrorJSON(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
+		return
+	}
+
+	account, err := h.service.Deposit(r.Context(), accountId, request)
+	if err != nil {
+
+		switch {
+		case errors.Is(err, ErrInvalidAccount):
+			response.ErrorJSON(w, http.StatusBadRequest, "INVALID_ACCOUNT", "Invalid account")
+		case errors.Is(err, ErrInvalidAmount):
+			response.ErrorJSON(w, http.StatusBadRequest, "INVALID_AMOUNT", "Amount must be greater than zero")
+		case errors.Is(err, ErrAccountNotFound):
+			response.ErrorJSON(w, http.StatusNotFound, "ACCOUNT_NOT_FOUND", "Account not found")
+		case errors.Is(err, ErrAccountBlocked):
+			response.ErrorJSON(w, http.StatusForbidden, "ACCOUNT_BLOCKED", "Account is blocked")
+		case errors.Is(err, ErrAccountClosed):
+			response.ErrorJSON(w, http.StatusForbidden, "ACCOUNT_CLOSED", "Account is closed")
+		default:
+			response.ErrorJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
+		}
+		return
+	}
+
+	response.JSON(w, http.StatusOK, account)
+}
+
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
+
+	authenticatedCustomerId, ok := r.Context().Value(auth.CustomerIdKey).(int64)
+	if !ok {
+		response.ErrorJSON(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
+		return
+	}
+
 	customerIDString := chi.URLParam(r, "customerID")
 
 	customerID, err := strconv.ParseInt(customerIDString, 10, 64)
 
-	if err != nil || customerID <= 0 {
-		response.ErrorJSON(w, http.StatusBadRequest, "INVALID_CUSTOMER_ID", "Invalid customer id")
+	if err != nil || customerID != authenticatedCustomerId {
+		response.ErrorJSON(w, http.StatusForbidden, "FORBIDDEN", "You cannot create an account for another customer")
 		return
 	}
 
@@ -64,6 +110,13 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) GetByCustomerId(w http.ResponseWriter, r *http.Request) {
+
+	authenticatedCustomerId, ok := r.Context().Value(auth.CustomerIdKey).(int64)
+	if !ok {
+		response.ErrorJSON(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
+		return
+	}
+
 	customerIdString := chi.URLParam(r, "id")
 
 	customerID, err := strconv.ParseInt(customerIdString, 10, 64)
@@ -78,6 +131,10 @@ func (h *Handler) GetByCustomerId(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if authenticatedCustomerId != customerID {
+		response.ErrorJSON(w, http.StatusForbidden, "FORBIDDEN", "You cannot get accounts for another customer")
+		return
+	}
 	accounts, err := h.service.GetByCustomerId(r.Context(), customerID)
 	if err != nil {
 		if errors.Is(err, ErrCustomerNotFound) {
@@ -92,11 +149,11 @@ func (h *Handler) GetByCustomerId(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, accounts)
 }
 
-// GetByID retrieves an account.
+// GetById retrieves an account.
 // @Summary Get account
 // @Description Get a bank account by ID.
 // @Tags Accounts
-// @Produce json
+// @Produce JSON
 // @Security BearerAuth
 // @Param id path int64 true "Account ID"
 // @Success 200 {object} Account
@@ -114,7 +171,13 @@ func (h *Handler) GetById(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	account, err := h.service.GetById(r.Context(), id)
+	customerId, ok := r.Context().Value(auth.CustomerIdKey).(int64)
+	if !ok {
+		response.ErrorJSON(w, http.StatusUnauthorized, "UNAUTHORIZED", "Unauthorized")
+		return
+	}
+
+	account, err := h.service.GetByIdForCustomer(r.Context(), id, customerId)
 	if err != nil {
 		response.ErrorJSON(w, http.StatusNotFound, "ACCOUNT_NOT_FOUND", "Account not found")
 		return

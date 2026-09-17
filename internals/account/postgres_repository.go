@@ -2,12 +2,32 @@ package account
 
 import (
 	"context"
+	"errors"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type PostgresRepository struct {
 	db *pgxpool.Pool
+}
+
+func (r PostgresRepository) Deposit(ctx context.Context, id int64, amount int64) (Account, error) {
+	var account Account
+
+	err := r.db.QueryRow(ctx, `
+		UPDATE accounts
+		SET balance = balance + $1
+		WHERE id = $2
+		RETURNING id, customer_id, account_number, account_type, currency, balance, status
+	`, amount, id).Scan(&account.ID, &account.CustomerID, &account.AccountNumber, &account.AccountType, &account.Currency, &account.Balance, &account.Status)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Account{}, ErrAccountNotFound
+		}
+		return account, err
+	}
+	return account, nil
 }
 
 func NewPostgresRepository(db *pgxpool.Pool) *PostgresRepository {
