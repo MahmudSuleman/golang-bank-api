@@ -22,6 +22,21 @@ func NewHandler(service *Service) *Handler {
 	}
 }
 
+// Deposit
+// @Summary Deposit money into an account
+// @Description Deposits the specified amount into the given account.
+// @Tags Accounts
+// @Accept json
+// @Produce json
+// @Param id path int64 true "Account ID"
+// @Param request body MoneyRequest true "Deposit amount"
+// @Success 200 {object} Account
+// @Failure 400 {object} response.ErrorResponse
+// @Failure 403 {object} response.ErrorResponse
+// @Failure 404 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Security BearerAuth
+// @Router /accounts/{id}/deposit [post]
 func (h *Handler) Deposit(w http.ResponseWriter, r *http.Request) {
 	accountIdString := chi.URLParam(r, "id")
 	accountId, err := strconv.ParseInt(accountIdString, 10, 64)
@@ -60,6 +75,22 @@ func (h *Handler) Deposit(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusOK, account)
 }
 
+// Create GoDoc
+// @Summary Create a bank account
+// @Description Creates a new bank account for the authenticated customer.
+// @Tags Accounts
+// @Accept json
+// @Produce json
+// @Param customerID path int64 true "Customer ID"
+// @Param request body CreateAccountRequest true "Account details"
+// @Success 201 {object} Account
+// @Failure 400 {object} response.ErrorResponse
+// @Failure 401 {object} response.ErrorResponse
+// @Failure 403 {object} response.ErrorResponse
+// @Failure 404 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Security BearerAuth
+// @Router /customers/{customerID}/accounts [post]
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 	authenticatedCustomerId, ok := r.Context().Value(auth.CustomerIdKey).(int64)
@@ -109,6 +140,20 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	response.JSON(w, http.StatusCreated, account)
 }
 
+// GetByCustomerId GoDoc
+// @Summary Get customer accounts
+// @Description Returns all bank accounts belonging to the authenticated customer.
+// @Tags Accounts
+// @Produce json
+// @Param id path int64 true "Customer ID"
+// @Success 200 {array} Account
+// @Failure 400 {object} response.ErrorResponse
+// @Failure 401 {object} response.ErrorResponse
+// @Failure 403 {object} response.ErrorResponse
+// @Failure 404 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Security BearerAuth
+// @Router /customers/{id}/accounts [get]
 func (h *Handler) GetByCustomerId(w http.ResponseWriter, r *http.Request) {
 
 	authenticatedCustomerId, ok := r.Context().Value(auth.CustomerIdKey).(int64)
@@ -153,13 +198,14 @@ func (h *Handler) GetByCustomerId(w http.ResponseWriter, r *http.Request) {
 // @Summary Get account
 // @Description Get a bank account by ID.
 // @Tags Accounts
-// @Produce JSON
+// @Produce json
 // @Security BearerAuth
 // @Param id path int64 true "Account ID"
 // @Success 200 {object} Account
 // @Failure 401 {object} response.ErrorResponse
 // @Failure 404 {object} response.ErrorResponse
 // @Failure 500 {object} response.ErrorResponse
+// @Security BearerAuth
 // @Router /accounts/{id} [get]
 func (h *Handler) GetById(w http.ResponseWriter, r *http.Request) {
 	idString := chi.URLParam(r, "id")

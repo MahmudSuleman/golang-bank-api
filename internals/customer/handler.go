@@ -19,6 +19,15 @@ func NewHandler(service *Service) *Handler {
 	}
 }
 
+// GetAll godoc
+// @Summary Get all customers
+// @Description Retrieves all customers.
+// @Tags Customers
+// @Produce json
+// @Success 200 {array} Customer
+// @Failure 400 {string} string
+// @Security BearerAuth
+// @Router /customers [get]
 func (h *Handler) GetAll(w http.ResponseWriter, r *http.Request) {
 	customers, err := h.service.GetAll(r.Context())
 	if err != nil {
@@ -29,6 +38,17 @@ func (h *Handler) GetAll(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(customers)
 }
 
+// GetById GoDoc
+// @Summary Get customer by ID
+// @Description Retrieves a customer by their ID.
+// @Tags Customers
+// @Produce json
+// @Param id path int64 true "Customer ID"
+// @Success 200 {object} Customer
+// @Failure 400 {string} string
+// @Failure 404 {string} string
+// @Security BearerAuth
+// @Router /customers/{id} [get]
 func (h *Handler) GetById(w http.ResponseWriter, r *http.Request) {
 	idString := chi.URLParam(r, "id")
 
@@ -46,6 +66,18 @@ func (h *Handler) GetById(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(customer)
 }
 
+// Create GoDoc
+// @Summary Create a customer
+// @Description Creates a new customer.
+// @Tags Customers
+// @Accept json
+// @Produce json
+// @Param request body CreateCustomerRequest true "Customer details"
+// @Success 201 {object} Customer
+// @Failure 400 {string} string
+// @Failure 500 {string} string
+// @Security BearerAuth
+// @Router /customers [post]
 func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 	var request CreateCustomerRequest
