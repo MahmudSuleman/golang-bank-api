@@ -22,6 +22,77 @@ func NewHandler(service *Service) *Handler {
 	}
 }
 
+// Transfer godoc
+// @Summary Transfer money between accounts
+// @Description Transfers money from the specified source account to another account.
+// @Tags Accounts
+// @Accept json
+// @Produce json
+// @Param id path int64 true "Source Account ID"
+// @Param request body TransferRequest true "Transfer details"
+// @Success 200 {object} map[string]string
+// @Failure 400 {object} response.ErrorResponse
+// @Failure 403 {object} response.ErrorResponse
+// @Failure 404 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Security BearerAuth
+// @Router /accounts/{id}/transfer [post]
+func (h *Handler) Transfer(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	accountIDString := chi.URLParam(r, "id")
+
+	accountID, err := strconv.ParseInt(accountIDString, 10, 64)
+
+	if err != nil || accountID <= 0 {
+		response.ErrorJSON(w, http.StatusBadRequest, "INVALID_ACCOUNT_ID", "Invalid account ID")
+		return
+	}
+
+	var request TransferRequest
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+
+		response.ErrorJSON(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
+		return
+	}
+
+	err = h.service.Transfer(r.Context(), accountID, request)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrInvalidAccount):
+			response.ErrorJSON(w, http.StatusBadRequest, "INVALID_ACCOUNT", "Invalid account")
+
+		case errors.Is(err, ErrInvalidAmount):
+			response.ErrorJSON(w, http.StatusBadRequest, "INVALID_AMOUNT", "Amount must be greater than zero")
+
+		case errors.Is(err, ErrSameAccount):
+			response.ErrorJSON(w, http.StatusBadRequest, "SAME_ACCOUNT", "Source and destination accounts must be different")
+
+		case errors.Is(err, ErrAccountNotFound):
+			response.ErrorJSON(w, http.StatusNotFound, "ACCOUNT_NOT_FOUND", "Account not found")
+
+		case errors.Is(err, ErrInsufficientBalance):
+			response.ErrorJSON(w, http.StatusBadRequest, "INSUFFICIENT_BALANCE", "Insufficient balance")
+
+		case errors.Is(err, ErrAccountBlocked):
+			response.ErrorJSON(w, http.StatusForbidden, "ACCOUNT_BLOCKED", "Account is blocked")
+
+		case errors.Is(err, ErrAccountClosed):
+			response.ErrorJSON(w, http.StatusForbidden, "ACCOUNT_CLOSED", "Account is closed")
+
+		default:
+			response.ErrorJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
+		}
+
+		return
+	}
+
+	response.JSON(w, http.StatusOK, map[string]string{"message": "Transfer successful"})
+}
+
 // Withdraw godoc
 // @Summary Withdraw money from an account
 // @Description Withdraws the specified amount from the account.

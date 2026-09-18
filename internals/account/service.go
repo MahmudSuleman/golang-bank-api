@@ -23,6 +23,8 @@ var (
 	ErrInsufficientBalance    = errors.New("insufficient balance")
 	ErrAccountOperationFailed = errors.New("account operation failed")
 	ErrWithdrawalFailed       = errors.New("withdrawal failed")
+	ErrSameAccount            = errors.New("source and destination accounts must be different")
+	ErrDifferentCurrency      = errors.New("source and destination accounts must have the same currency")
 )
 
 type CustomerChecker interface {
@@ -40,6 +42,60 @@ func NewService(repository Repository, customerChecker CustomerChecker) *Service
 		customerChecker: customerChecker,
 	}
 }
+
+func (s *Service) Transfer(ctx context.Context, fromAccountId int64, request TransferRequest) error {
+	if fromAccountId <= 0 {
+		return ErrInvalidAccount
+	}
+
+	if request.DestinationAccountId <= 0 {
+		return ErrInvalidAccount
+	}
+
+	if fromAccountId == request.DestinationAccountId {
+		return ErrSameAccount
+	}
+
+	if request.Amount <= 0 {
+		return ErrInvalidAmount
+	}
+
+	sourceAccount, err := s.repository.GetById(ctx, fromAccountId)
+
+	if err != nil {
+		return err
+	}
+
+	switch sourceAccount.Status {
+	case AccountStatusBlocked:
+		return ErrAccountBlocked
+	case AccountStatusClosed:
+		return ErrAccountClosed
+	}
+
+	if sourceAccount.Balance < request.Amount {
+		return ErrInsufficientBalance
+	}
+
+	destinationAccount, err := s.repository.GetById(ctx, request.DestinationAccountId)
+
+	if err != nil {
+		return err
+	}
+	switch destinationAccount.Status {
+	case AccountStatusBlocked:
+		return ErrAccountBlocked
+	case AccountStatusClosed:
+		return ErrAccountClosed
+	}
+
+	if sourceAccount.Currency != destinationAccount.Currency {
+		return ErrDifferentCurrency
+	}
+	return s.repository.Transfer(ctx, fromAccountId, request.DestinationAccountId, request.Amount)
+
+}
+
 func (s *Service) Withdraw(ctx context.Context, id int64, request MoneyRequest) (Account, error) {
 	if id <= 0 {
 		return Account{}, ErrInvalidAccount
@@ -60,11 +116,7 @@ func (s *Service) Withdraw(ctx context.Context, id int64, request MoneyRequest) 
 		return Account{}, ErrAccountBlocked
 	case AccountStatusClosed:
 		return Account{}, ErrAccountClosed
-
-
 	}
-
-
 
 	return s.repository.Withdraw(ctx, id, request.Amount)
 

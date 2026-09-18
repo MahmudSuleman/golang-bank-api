@@ -8,4 +8,5 @@ type Repository interface {
 	GetByCustomerID(ctx context.Context, customerId int64) ([]Account, error)
 	Deposit(ctx context.Context, id int64, amount int64) (Account, error)
 	Withdraw(ctx context.Context, id int64, amount int64) (Account, error)
+	Transfer(ctx context.Context, fromAccountId int64, toAccountId int64, amount int64) error
 }

@@ -36,6 +36,7 @@ func NewRouter(customerHandler *customer.Handler,
 			r.Get("/{id}", accountHandler.GetById)
 			r.Post("/{id}/deposit", accountHandler.Deposit)
 			r.Post("/{id}/withdraw", accountHandler.Withdraw)
+			r.Post("/{id}/transfer", accountHandler.Transfer)
 		})
 
 	})

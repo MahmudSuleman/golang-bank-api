@@ -20,6 +20,11 @@ type MoneyRequest struct {
 	Amount int64 `json:"amount"`
 }
 
+type TransferRequest struct {
+	DestinationAccountId int64 `json:"destination_account_id"`
+	Amount               int64 `json:"amount"`
+}
+
 const (
 	AccountTypeSavings = "SAVINGS"
 	AccountTypeCurrent = "CURRENT"

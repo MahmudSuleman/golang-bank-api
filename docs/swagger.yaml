@@ -31,6 +31,13 @@ definitions:
       amount:
         type: integer
     type: object
+  account.TransferRequest:
+    properties:
+      amount:
+        type: integer
+      destination_account_id:
+        type: integer
+    type: object
   customer.CreateCustomerRequest:
     properties:
       email:
@@ -181,6 +188,54 @@ paths:
       security:
       - BearerAuth: []
       summary: Deposit money into an account
+      tags:
+      - Accounts
+  /accounts/{id}/transfer:
+    post:
+      consumes:
+      - application/json
+      description: Transfers money from the specified source account to another account.
+      parameters:
+      - description: Source Account ID
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Transfer details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/account.TransferRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Transfer money between accounts
       tags:
       - Accounts
   /accounts/{id}/withdraw:
