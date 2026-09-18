@@ -19,6 +19,8 @@ var (
 	ErrInvalidAmount  = errors.New("invalid amount")
 	ErrAccountBlocked = errors.New("account is blocked")
 	ErrAccountClosed  = errors.New("account is closed")
+
+	ErrInsufficientBalance = errors.New("insufficient balance")
 )
 
 type CustomerChecker interface {
@@ -35,6 +37,35 @@ func NewService(repository Repository, customerChecker CustomerChecker) *Service
 		repository:      repository,
 		customerChecker: customerChecker,
 	}
+}
+func (s *Service) Withdraw(ctx context.Context, id int64, request MoneyRequest) (Account, error) {
+	if id <= 0 {
+		return Account{}, ErrInvalidAccount
+	}
+
+	if request.Amount <= 0 {
+		return Account{}, ErrInvalidAmount
+	}
+
+	account, err := s.repository.GetById(ctx, id)
+
+	if err != nil {
+		return Account{}, err
+	}
+
+	switch account.Status {
+	case AccountStatusBlocked:
+		return Account{}, ErrAccountBlocked
+	case AccountStatusClosed:
+		return Account{}, ErrAccountClosed
+	}
+
+	if account.Balance < request.Amount {
+		return Account{}, ErrInsufficientBalance
+	}
+
+	return s.repository.Withdraw(ctx, id, request.Amount)
+
 }
 func (s *Service) Deposit(ctx context.Context, id int64, request MoneyRequest) (Account, error) {
 	if id <= 0 {

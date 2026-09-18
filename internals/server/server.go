@@ -30,11 +30,13 @@ func NewRouter(customerHandler *customer.Handler,
 		r.Get("/customers/{id}", customerHandler.GetById)
 		r.Get("/customers/{id}/accounts", accountHandler.GetByCustomerId)
 		r.Post("/customers/{id}/accounts", accountHandler.Create)
-
-		r.Post("/accounts", accountHandler.Create)
-		r.Get("/accounts", accountHandler.GetByCustomerId)
-		r.Get("/accounts/{id}", accountHandler.GetById)
-		r.Post("/accounts/{id}/deposit", accountHandler.Deposit)
+		r.Route("/accounts", func(r chi.Router) {
+			r.Post("/", accountHandler.Create)
+			r.Get("/", accountHandler.GetByCustomerId)
+			r.Get("/{id}", accountHandler.GetById)
+			r.Post("/{id}/deposit", accountHandler.Deposit)
+			r.Post("/{id}/withdraw", accountHandler.Withdraw)
+		})
 
 	})
 

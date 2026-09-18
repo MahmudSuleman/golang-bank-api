@@ -22,6 +22,70 @@ func NewHandler(service *Service) *Handler {
 	}
 }
 
+// Withdraw godoc
+// @Summary Withdraw money from an account
+// @Description Withdraws the specified amount from the account.
+// @Tags Accounts
+// @Accept json
+// @Produce json
+// @Param id path int64 true "Account ID"
+// @Param request body MoneyRequest true "Withdrawal amount"
+// @Success 200 {object} Account
+// @Failure 400 {object} response.ErrorResponse
+// @Failure 403 {object} response.ErrorResponse
+// @Failure 500 {object} response.ErrorResponse
+// @Security BearerAuth
+// @Router /accounts/{id}/withdraw [post]
+func (h *Handler) Withdraw(w http.ResponseWriter, r *http.Request) {
+	accountIdString := chi.URLParam(r, "id")
+	accountId, err := strconv.ParseInt(accountIdString, 10, 64)
+
+	if err != nil || accountId <= 0 {
+		response.ErrorJSON(w, http.StatusBadRequest, "INVALID_ACCOUNT_ID", "Invalid account id")
+		return
+	}
+
+	var request MoneyRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		response.ErrorJSON(w, http.StatusBadRequest, "INVALID_REQUEST", "Invalid request body")
+		return
+	}
+
+	account, err := h.service.Withdraw(r.Context(), accountId, request)
+	if err != nil {
+
+		switch {
+		case errors.Is(err, ErrInvalidAccount):
+			response.ErrorJSON(w, http.StatusBadRequest, "INVALID_ACCOUNT", "Invalid account")
+
+		case errors.Is(err, ErrInvalidAmount):
+			response.ErrorJSON(w, http.StatusBadRequest, "INVALID_AMOUNT", "Amount must be greater than zero")
+
+		case errors.Is(err, ErrAccountNotFound):
+			response.ErrorJSON(w, http.StatusBadRequest, "ACCOUNT_NOT_FOUND", "Account not found")
+
+		case errors.Is(err, ErrInsufficientBalance):
+			response.ErrorJSON(w, http.StatusBadRequest, "INSUFFICIENT_BALANCE", "Insufficient balance")
+		case errors.Is(err, ErrAccountBlocked):
+			response.ErrorJSON(
+				w,
+				http.StatusForbidden,
+				"ACCOUNT_BLOCKED",
+				"Account is blocked",
+			)
+
+		case errors.Is(err, ErrAccountClosed):
+			response.ErrorJSON(w, http.StatusForbidden, "ACCOUNT_CLOSED", "Account is closed")
+
+		default:
+			response.ErrorJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
+		}
+
+	}
+
+	response.JSON(w, http.StatusOK, account)
+}
+
 // Deposit
 // @Summary Deposit money into an account
 // @Description Deposits the specified amount into the given account.

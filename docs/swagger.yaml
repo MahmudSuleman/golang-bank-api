@@ -183,6 +183,48 @@ paths:
       summary: Deposit money into an account
       tags:
       - Accounts
+  /accounts/{id}/withdraw:
+    post:
+      consumes:
+      - application/json
+      description: Withdraws the specified amount from the account.
+      parameters:
+      - description: Account ID
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Withdrawal amount
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/account.MoneyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/account.Account'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Withdraw money from an account
+      tags:
+      - Accounts
   /auth/login:
     post:
       consumes:

@@ -12,6 +12,28 @@ type PostgresRepository struct {
 	db *pgxpool.Pool
 }
 
+func (r PostgresRepository) Withdraw(ctx context.Context, id int64, amount int64) (Account, error) {
+	var account Account
+
+	err := r.db.QueryRow(ctx, `
+		UPDATE accounts 
+		SET balance = balance - $1
+		WHERE id = $2
+		AND balance >= $1
+		RETURNING 
+		id, customer_id, account_number, account_type, currency, status, balance
+`, amount, id).Scan(
+		&account.ID, &account.CustomerID, &account.AccountNumber, &account.AccountType, &account.Currency, &account.Status, &account.Balance)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Account{}, ErrInsufficientBalance
+		}
+		return account, err
+	}
+	return account, nil
+}
+
 func (r PostgresRepository) Deposit(ctx context.Context, id int64, amount int64) (Account, error) {
 	var account Account
 
