@@ -19,7 +19,8 @@ func (r PostgresRepository) Withdraw(ctx context.Context, id int64, amount int64
 		UPDATE accounts 
 		SET balance = balance - $1
 		WHERE id = $2
-		AND balance >= $1
+		  AND status = 'ACTIVE'
+		  AND balance >= $1
 		RETURNING 
 		id, customer_id, account_number, account_type, currency, status, balance
 `, amount, id).Scan(
@@ -27,7 +28,7 @@ func (r PostgresRepository) Withdraw(ctx context.Context, id int64, amount int64
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return Account{}, ErrInsufficientBalance
+			return Account{}, ErrWithdrawalFailed
 		}
 		return account, err
 	}
@@ -41,11 +42,19 @@ func (r PostgresRepository) Deposit(ctx context.Context, id int64, amount int64)
 		UPDATE accounts
 		SET balance = balance + $1
 		WHERE id = $2
+		AND status = 'ACTIVE'
 		RETURNING id, customer_id, account_number, account_type, currency, balance, status
-	`, amount, id).Scan(&account.ID, &account.CustomerID, &account.AccountNumber, &account.AccountType, &account.Currency, &account.Balance, &account.Status)
+	`, amount, id).Scan(
+		&account.ID,
+		&account.CustomerID,
+		&account.AccountNumber,
+		&account.AccountType,
+		&account.Currency,
+		&account.Balance,
+		&account.Status)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return Account{}, ErrAccountNotFound
+			return Account{}, ErrAccountOperationFailed
 		}
 		return account, err
 	}

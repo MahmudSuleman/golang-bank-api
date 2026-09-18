@@ -37,7 +37,8 @@ func main() {
 
 	defer db.Close()
 
-	jwtManager := auth.NewJWTManager("secret", 15*time.Minute)
+	//todo: change to a shorter time
+	jwtManager := auth.NewJWTManager("secret", 15*time.Hour)
 
 	customerRepository := customer.NewPostgresRepository(db)
 	customerService := customer.NewService(customerRepository)

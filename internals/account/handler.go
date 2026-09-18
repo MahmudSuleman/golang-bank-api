@@ -64,15 +64,10 @@ func (h *Handler) Withdraw(w http.ResponseWriter, r *http.Request) {
 		case errors.Is(err, ErrAccountNotFound):
 			response.ErrorJSON(w, http.StatusBadRequest, "ACCOUNT_NOT_FOUND", "Account not found")
 
-		case errors.Is(err, ErrInsufficientBalance):
+		case errors.Is(err, ErrWithdrawalFailed):
 			response.ErrorJSON(w, http.StatusBadRequest, "INSUFFICIENT_BALANCE", "Insufficient balance")
 		case errors.Is(err, ErrAccountBlocked):
-			response.ErrorJSON(
-				w,
-				http.StatusForbidden,
-				"ACCOUNT_BLOCKED",
-				"Account is blocked",
-			)
+			response.ErrorJSON(w, http.StatusForbidden, "ACCOUNT_BLOCKED", "Account is blocked")
 
 		case errors.Is(err, ErrAccountClosed):
 			response.ErrorJSON(w, http.StatusForbidden, "ACCOUNT_CLOSED", "Account is closed")

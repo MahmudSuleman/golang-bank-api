@@ -20,7 +20,9 @@ var (
 	ErrAccountBlocked = errors.New("account is blocked")
 	ErrAccountClosed  = errors.New("account is closed")
 
-	ErrInsufficientBalance = errors.New("insufficient balance")
+	ErrInsufficientBalance    = errors.New("insufficient balance")
+	ErrAccountOperationFailed = errors.New("account operation failed")
+	ErrWithdrawalFailed       = errors.New("withdrawal failed")
 )
 
 type CustomerChecker interface {
@@ -58,11 +60,11 @@ func (s *Service) Withdraw(ctx context.Context, id int64, request MoneyRequest) 
 		return Account{}, ErrAccountBlocked
 	case AccountStatusClosed:
 		return Account{}, ErrAccountClosed
+
+
 	}
 
-	if account.Balance < request.Amount {
-		return Account{}, ErrInsufficientBalance
-	}
+
 
 	return s.repository.Withdraw(ctx, id, request.Amount)
 
