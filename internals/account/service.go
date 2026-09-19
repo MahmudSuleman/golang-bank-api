@@ -60,38 +60,6 @@ func (s *Service) Transfer(ctx context.Context, fromAccountId int64, request Tra
 		return ErrInvalidAmount
 	}
 
-	sourceAccount, err := s.repository.GetById(ctx, fromAccountId)
-
-	if err != nil {
-		return err
-	}
-
-	switch sourceAccount.Status {
-	case AccountStatusBlocked:
-		return ErrAccountBlocked
-	case AccountStatusClosed:
-		return ErrAccountClosed
-	}
-
-	if sourceAccount.Balance < request.Amount {
-		return ErrInsufficientBalance
-	}
-
-	destinationAccount, err := s.repository.GetById(ctx, request.DestinationAccountId)
-
-	if err != nil {
-		return err
-	}
-	switch destinationAccount.Status {
-	case AccountStatusBlocked:
-		return ErrAccountBlocked
-	case AccountStatusClosed:
-		return ErrAccountClosed
-	}
-
-	if sourceAccount.Currency != destinationAccount.Currency {
-		return ErrDifferentCurrency
-	}
 	return s.repository.Transfer(ctx, fromAccountId, request.DestinationAccountId, request.Amount)
 
 }

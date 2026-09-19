@@ -21,37 +21,18 @@ func (r *PostgresRepository) Transfer(ctx context.Context, fromAccountId int64, 
 
 	defer tx.Rollback(ctx)
 
-	// debit source account
-	var sourceBalance int64
+	firstId, secondId := accountIdsInLockOrder(fromAccountId, toAccountId)
 
-	err = tx.QueryRow(ctx, `
-		UPDATE accounts
-		SET balance = balance - $1
-		WHERE id = $2
-		AND status = 'ACTIVE'
-		AND balance >= $1
-		RETURNING balance
-`, amount, fromAccountId).Scan(&sourceBalance)
-
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrInsufficientBalance
-		}
-		return err
-	}
-
-	// credit destination account
-
-	var destinationBalance int64
+	// lock first account
+	var firstAccount Account
 
 	err = tx.QueryRow(ctx,
 		`
-		UPDATE accounts
-		SET balance = balance + $1
-		WHERE id = $2
-		AND status = 'ACTIVE'
-		RETURNING balance
-`, amount, toAccountId).Scan(&destinationBalance)
+			SELECT id,customer_id, account_number, account_type, currency, balance, status
+			FROM accounts
+			WHERE id = $1
+			FOR UPDATE
+`, firstId).Scan(&firstAccount.ID, &firstAccount.CustomerID, &firstAccount.AccountNumber, &firstAccount.AccountType, &firstAccount.Currency, &firstAccount.Balance, &firstAccount.Status)
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -60,10 +41,79 @@ func (r *PostgresRepository) Transfer(ctx context.Context, fromAccountId int64, 
 		return err
 	}
 
-	if err := tx.Commit(ctx); err != nil {
+	// lock second account
+	var secondAccount Account
+
+	err = tx.QueryRow(ctx,
+		`
+			SELECT id,customer_id, account_number, account_type, currency, balance, status
+			FROM accounts
+			WHERE id = $1
+			FOR UPDATE
+`, secondId).Scan(&secondAccount.ID, &secondAccount.CustomerID, &secondAccount.AccountNumber, &secondAccount.AccountType, &secondAccount.Currency, &secondAccount.Balance, &secondAccount.Status)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrAccountNotFound
+		}
 		return err
 	}
-	return nil
+
+	//identify source and destination accounts
+	var source Account
+	var destination Account
+
+	if fromAccountId == firstAccount.ID {
+		source = firstAccount
+		destination = secondAccount
+
+	} else {
+		source = secondAccount
+		destination = firstAccount
+	}
+
+	if source.Status != AccountStatusActive {
+		return ErrAccountBlocked
+	}
+
+	if destination.Status != AccountStatusActive {
+		return ErrAccountBlocked
+	}
+
+	if source.Currency != destination.Currency {
+		return ErrDifferentCurrency
+	}
+
+	if source.Balance < amount {
+		return ErrInsufficientBalance
+	}
+
+	// debit source account
+
+	_, err = tx.Exec(ctx, `
+		UPDATE accounts
+		SET balance = balance - $1
+		WHERE id = $2
+`, amount, fromAccountId)
+
+	if err != nil {
+
+		return err
+	}
+
+	// credit destination account
+	_, err = tx.Exec(ctx,
+		`
+		UPDATE accounts
+		SET balance = balance + $1
+		WHERE id = $2
+`, amount, toAccountId)
+
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
 
 func (r *PostgresRepository) Withdraw(ctx context.Context, id int64, amount int64) (Account, error) {
@@ -138,7 +188,7 @@ func (r *PostgresRepository) Create(ctx context.Context, account Account) (Accou
 		account_type,
 		currency,
 		balance,
-		status,
+		status
 	)
 	VALUES($1, $2, $3, $4, $5, $6)
 	RETURNING
@@ -223,4 +273,11 @@ func (r *PostgresRepository) GetByCustomerID(ctx context.Context, customerId int
 		return nil, err
 	}
 	return accounts, nil
+}
+
+func accountIdsInLockOrder(firstId int64, secondId int64) (int64, int64) {
+	if firstId < secondId {
+		return firstId, secondId
+	}
+	return secondId, firstId
 }
