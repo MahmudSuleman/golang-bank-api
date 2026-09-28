@@ -3,6 +3,7 @@ package transaction
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -10,8 +11,8 @@ type PostgresRepository struct {
 	db *pgxpool.Pool
 }
 
-func (r *PostgresRepository) Create(ctx context.Context, transaction Transaction) (Transaction, error) {
-	err := r.db.QueryRow(ctx,
+func (r *PostgresRepository) Create(ctx context.Context, tx pgx.Tx, transaction Transaction) (Transaction, error) {
+	err := tx.QueryRow(ctx,
 		`
 		INSERT INTO transactions(account_id, type, amount, balance_after, reference)
 		VALUES ($1, $2, $3, $4, $5)
@@ -54,7 +55,7 @@ func (r *PostgresRepository) GetByAccountId(ctx context.Context, accountId int64
 			&trasaction.CreatedAt,
 		)
 
-		if err != nil{
+		if err != nil {
 			return nil, err
 		}
 

@@ -64,56 +64,6 @@ func (s *Service) Transfer(ctx context.Context, fromAccountId int64, request Tra
 
 }
 
-func (s *Service) Withdraw(ctx context.Context, id int64, request MoneyRequest) (Account, error) {
-	if id <= 0 {
-		return Account{}, ErrInvalidAccount
-	}
-
-	if request.Amount <= 0 {
-		return Account{}, ErrInvalidAmount
-	}
-
-	account, err := s.repository.GetById(ctx, id)
-
-	if err != nil {
-		return Account{}, err
-	}
-
-	switch account.Status {
-	case AccountStatusBlocked:
-		return Account{}, ErrAccountBlocked
-	case AccountStatusClosed:
-		return Account{}, ErrAccountClosed
-	}
-
-	return s.repository.Withdraw(ctx, id, request.Amount)
-
-}
-func (s *Service) Deposit(ctx context.Context, id int64, request MoneyRequest) (Account, error) {
-	if id <= 0 {
-		return Account{}, ErrInvalidAccount
-	}
-
-	if request.Amount <= 0 {
-		return Account{}, ErrInvalidAmount
-	}
-
-	account, err := s.repository.GetById(ctx, id)
-
-	if err != nil {
-		return Account{}, err
-	}
-
-	switch account.Status {
-	case AccountStatusBlocked:
-		return Account{}, ErrAccountBlocked
-	case AccountStatusClosed:
-		return Account{}, ErrAccountClosed
-	}
-
-	return s.repository.Deposit(ctx, id, request.Amount)
-
-}
 func (s *Service) Create(ctx context.Context, customerId int64, request CreateAccountRequest) (Account, error) {
 
 	exists, err := s.customerChecker.Exists(ctx, customerId)

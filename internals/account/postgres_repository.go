@@ -116,10 +116,10 @@ func (r *PostgresRepository) Transfer(ctx context.Context, fromAccountId int64, 
 	return tx.Commit(ctx)
 }
 
-func (r *PostgresRepository) Withdraw(ctx context.Context, id int64, amount int64) (Account, error) {
+func (r *PostgresRepository) Withdraw(ctx context.Context, tx pgx.Tx, id int64, amount int64) (Account, error) {
 	var account Account
 
-	err := r.db.QueryRow(ctx, `
+	err := tx.QueryRow(ctx, `
 	UPDATE
 	accounts
 	SET
@@ -144,10 +144,10 @@ func (r *PostgresRepository) Withdraw(ctx context.Context, id int64, amount int6
 	return account, nil
 }
 
-func (r *PostgresRepository) Deposit(ctx context.Context, id int64, amount int64) (Account, error) {
+func (r *PostgresRepository) Deposit(ctx context.Context, tx pgx.Tx, id int64, amount int64) (Account, error) {
 	var account Account
 
-	err := r.db.QueryRow(ctx, `
+	err := tx.QueryRow(ctx, `
 	UPDATE
 	accounts
 	SET

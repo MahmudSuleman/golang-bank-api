@@ -13,12 +13,18 @@ import (
 )
 
 type Handler struct {
-	service *Service
+	service          *Service
+	financialService *FinancialService
 }
 
-func NewHandler(service *Service) *Handler {
+func NewHandler(
+	service *Service,
+	financialService *FinancialService,
+) *Handler {
+
 	return &Handler{
-		service: service,
+		service:          service,
+		financialService: financialService,
 	}
 }
 
@@ -122,7 +128,7 @@ func (h *Handler) Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	account, err := h.service.Withdraw(r.Context(), accountId, request)
+	account, err := h.financialService.Withdraw(r.Context(), accountId, request)
 	if err != nil {
 
 		switch {
@@ -182,7 +188,7 @@ func (h *Handler) Deposit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	account, err := h.service.Deposit(r.Context(), accountId, request)
+	account, err := h.financialService.Deposit(r.Context(), accountId, request)
 	if err != nil {
 
 		switch {

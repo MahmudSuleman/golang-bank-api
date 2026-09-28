@@ -6,6 +6,7 @@ import (
 	"bank-api/internals/customer"
 	"bank-api/internals/database"
 	"bank-api/internals/server"
+	"bank-api/internals/transaction"
 	"bank-api/internals/user"
 	"context"
 	"fmt"
@@ -46,7 +47,10 @@ func main() {
 
 	accountRepository := account.NewPostgresRepository(db)
 	accountService := account.NewService(accountRepository, customerRepository)
-	accountHandler := account.NewHandler(accountService)
+
+	transactionRepository := transaction.NewPostgresRepository(db)
+	financialService := account.NewFinancialService(db, accountRepository, transactionRepository)
+	accountHandler := account.NewHandler(accountService, financialService)
 
 	userRepository := user.NewPostgresRepository(db)
 	userService := user.NewService(userRepository, customerRepository, jwtManager)
