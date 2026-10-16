@@ -126,3 +126,80 @@ func (s *FinancialService) Withdraw(
 	return account, nil
 
 }
+
+func (s *FinancialService) Transfer(
+	ctx context.Context,
+	fromAccountId int64,
+	request TransferRequest,
+) (Account, error) {
+	if fromAccountId <= 0 || request.DestinationAccountId <= 0 {
+		return Account{}, ErrInvalidAccount
+	}
+
+	if fromAccountId == request.DestinationAccountId {
+		return Account{}, ErrSameAccount
+	}
+
+	if request.Amount <= 0 {
+		return Account{}, ErrInvalidAmount
+	}
+
+	// Both ledger rows share one transfer id so they can be matched later.
+	// `reference` is UNIQUE in the table, so each row gets its own suffix.
+	reference := uuid.NewString()
+
+	var source Account
+
+	err := database.WithTx(
+		ctx,
+		s.db,
+		func(tx pgx.Tx) error {
+			var destination Account
+			var err error
+
+			source, destination, err = s.accountRepository.Transfer(
+				ctx,
+				tx,
+				fromAccountId,
+				request.DestinationAccountId,
+				request.Amount,
+			)
+			if err != nil {
+				return err
+			}
+
+			_, err = s.transactionRepository.Create(
+				ctx,
+				tx,
+				transaction.Transaction{
+					AccountId:    source.ID,
+					Type:         transaction.TypeTransferDebit,
+					Amount:       request.Amount,
+					BalanceAfter: source.Balance,
+					Reference:    reference + "-DR",
+				},
+			)
+			if err != nil {
+				return err
+			}
+
+			_, err = s.transactionRepository.Create(
+				ctx,
+				tx,
+				transaction.Transaction{
+					AccountId:    destination.ID,
+					Type:         transaction.TypeTransferCredit,
+					Amount:       request.Amount,
+					BalanceAfter: destination.Balance,
+					Reference:    reference + "-CR",
+				},
+			)
+			return err
+		})
+
+	if err != nil {
+		return Account{}, err
+	}
+
+	return source, nil
+}

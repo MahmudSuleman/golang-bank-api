@@ -43,27 +43,6 @@ func NewService(repository Repository, customerChecker CustomerChecker) *Service
 	}
 }
 
-func (s *Service) Transfer(ctx context.Context, fromAccountId int64, request TransferRequest) error {
-	if fromAccountId <= 0 {
-		return ErrInvalidAccount
-	}
-
-	if request.DestinationAccountId <= 0 {
-		return ErrInvalidAccount
-	}
-
-	if fromAccountId == request.DestinationAccountId {
-		return ErrSameAccount
-	}
-
-	if request.Amount <= 0 {
-		return ErrInvalidAmount
-	}
-
-	return s.repository.Transfer(ctx, fromAccountId, request.DestinationAccountId, request.Amount)
-
-}
-
 func (s *Service) Create(ctx context.Context, customerId int64, request CreateAccountRequest) (Account, error) {
 
 	exists, err := s.customerChecker.Exists(ctx, customerId)

@@ -12,108 +12,71 @@ type PostgresRepository struct {
 	db *pgxpool.Pool
 }
 
-func (r *PostgresRepository) Transfer(ctx context.Context, fromAccountId int64, toAccountId int64, amount int64) error {
-	tx, err := r.db.Begin(ctx)
-
-	if err != nil {
-		return err
-	}
-
-	defer tx.Rollback(ctx)
-
+func (r *PostgresRepository) Transfer(
+	ctx context.Context,
+	tx pgx.Tx,
+	fromAccountId int64,
+	toAccountId int64,
+	amount int64,
+) (Account, Account, error) {
+	// Always lock rows in the same order (lowest id first) to avoid deadlocks.
 	firstId, secondId := accountIdsInLockOrder(fromAccountId, toAccountId)
 
-	// lock first account
-	var firstAccount Account
-
-	err = tx.QueryRow(ctx,
-		`
-			SELECT id,customer_id, account_number, account_type, currency, balance, status
-			FROM accounts
-			WHERE id = $1
-			FOR UPDATE
-`, firstId).Scan(&firstAccount.ID, &firstAccount.CustomerID, &firstAccount.AccountNumber, &firstAccount.AccountType, &firstAccount.Currency, &firstAccount.Balance, &firstAccount.Status)
-
+	firstAccount, err := lockAccount(ctx, tx, firstId)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrAccountNotFound
-		}
-		return err
+		return Account{}, Account{}, err
 	}
 
-	// lock second account
-	var secondAccount Account
-
-	err = tx.QueryRow(ctx,
-		`
-			SELECT id,customer_id, account_number, account_type, currency, balance, status
-			FROM accounts
-			WHERE id = $1
-			FOR UPDATE
-`, secondId).Scan(&secondAccount.ID, &secondAccount.CustomerID, &secondAccount.AccountNumber, &secondAccount.AccountType, &secondAccount.Currency, &secondAccount.Balance, &secondAccount.Status)
-
+	secondAccount, err := lockAccount(ctx, tx, secondId)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return ErrAccountNotFound
-		}
-		return err
+		return Account{}, Account{}, err
 	}
 
-	//identify source and destination accounts
-	var source Account
-	var destination Account
-
-	if fromAccountId == firstAccount.ID {
-		source = firstAccount
-		destination = secondAccount
-
-	} else {
-		source = secondAccount
-		destination = firstAccount
+	// identify source and destination accounts
+	source, destination := firstAccount, secondAccount
+	if source.ID != fromAccountId {
+		source, destination = destination, source
 	}
 
-	if source.Status != AccountStatusActive {
-		return ErrAccountBlocked
+	if err := ensureActive(source); err != nil {
+		return Account{}, Account{}, err
 	}
 
-	if destination.Status != AccountStatusActive {
-		return ErrAccountBlocked
+	if err := ensureActive(destination); err != nil {
+		return Account{}, Account{}, err
 	}
 
 	if source.Currency != destination.Currency {
-		return ErrDifferentCurrency
+		return Account{}, Account{}, ErrDifferentCurrency
 	}
 
 	if source.Balance < amount {
-		return ErrInsufficientBalance
+		return Account{}, Account{}, ErrInsufficientBalance
 	}
 
 	// debit source account
-
-	_, err = tx.Exec(ctx, `
+	err = tx.QueryRow(ctx, `
 		UPDATE accounts
 		SET balance = balance - $1
 		WHERE id = $2
-`, amount, fromAccountId)
-
+		RETURNING balance
+	`, amount, source.ID).Scan(&source.Balance)
 	if err != nil {
-
-		return err
+		return Account{}, Account{}, err
 	}
 
 	// credit destination account
-	_, err = tx.Exec(ctx,
-		`
+	err = tx.QueryRow(ctx, `
 		UPDATE accounts
 		SET balance = balance + $1
 		WHERE id = $2
-`, amount, toAccountId)
-
+		RETURNING balance
+	`, amount, destination.ID).Scan(&destination.Balance)
 	if err != nil {
-		return err
+		return Account{}, Account{}, err
 	}
 
-	return tx.Commit(ctx)
+	return source, destination, nil
 }
 
 func (r *PostgresRepository) Withdraw(ctx context.Context, tx pgx.Tx, id int64, amount int64) (Account, error) {
@@ -280,4 +243,45 @@ func accountIdsInLockOrder(firstId int64, secondId int64) (int64, int64) {
 		return firstId, secondId
 	}
 	return secondId, firstId
+}
+
+func lockAccount(ctx context.Context, tx pgx.Tx, id int64) (Account, error) {
+	var account Account
+
+	err := tx.QueryRow(ctx, `
+		SELECT id, customer_id, account_number, account_type, currency, balance, status
+		FROM accounts
+		WHERE id = $1
+		FOR UPDATE
+	`, id).Scan(
+		&account.ID,
+		&account.CustomerID,
+		&account.AccountNumber,
+		&account.AccountType,
+		&account.Currency,
+		&account.Balance,
+		&account.Status,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Account{}, ErrAccountNotFound
+		}
+		return Account{}, err
+	}
+
+	return account, nil
+}
+
+func ensureActive(account Account) error {
+	switch account.Status {
+	case AccountStatusActive:
+		return nil
+	case AccountStatusBlocked:
+		return ErrAccountBlocked
+	case AccountStatusClosed:
+		return ErrAccountClosed
+	default:
+		return ErrAccountOperationFailed
+	}
 }

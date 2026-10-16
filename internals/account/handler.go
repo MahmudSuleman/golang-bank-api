@@ -36,7 +36,7 @@ func NewHandler(
 // @Produce json
 // @Param id path int64 true "Source Account ID"
 // @Param request body TransferRequest true "Transfer details"
-// @Success 200 {object} map[string]string
+// @Success 200 {object} Account
 // @Failure 400 {object} response.ErrorResponse
 // @Failure 403 {object} response.ErrorResponse
 // @Failure 404 {object} response.ErrorResponse
@@ -64,10 +64,12 @@ func (h *Handler) Transfer(
 		return
 	}
 
-	err = h.service.Transfer(r.Context(), accountID, request)
+	account, err := h.financialService.Transfer(r.Context(), accountID, request)
 
 	if err != nil {
 		switch {
+		case errors.Is(err, ErrDifferentCurrency):
+			response.ErrorJSON(w, http.StatusBadRequest, "DIFFERENT_CURRENCY", "Source and destination accounts must have the same currency")
 		case errors.Is(err, ErrInvalidAccount):
 			response.ErrorJSON(w, http.StatusBadRequest, "INVALID_ACCOUNT", "Invalid account")
 
@@ -96,7 +98,7 @@ func (h *Handler) Transfer(
 		return
 	}
 
-	response.JSON(w, http.StatusOK, map[string]string{"message": "Transfer successful"})
+	response.JSON(w, http.StatusOK, account)
 }
 
 // Withdraw godoc
