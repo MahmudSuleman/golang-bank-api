@@ -154,7 +154,7 @@ func (h *Handler) Withdraw(w http.ResponseWriter, r *http.Request) {
 		default:
 			response.ErrorJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "Internal server error")
 		}
-
+		return
 	}
 
 	response.JSON(w, http.StatusOK, account)
@@ -181,6 +181,7 @@ func (h *Handler) Deposit(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil || accountId <= 0 {
 		response.ErrorJSON(w, http.StatusBadRequest, "INVALID_ACCOUNT_ID", "Invalid account id")
+		return
 	}
 
 	var request MoneyRequest
@@ -273,8 +274,6 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		response.ErrorJSON(w, http.StatusInternalServerError, "INTERNAL_ERROR", "An internal error occurred")
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
 	response.JSON(w, http.StatusCreated, account)
 }
 

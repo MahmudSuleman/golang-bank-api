@@ -109,7 +109,7 @@ func (s *FinancialService) Withdraw(
 				tx,
 				transaction.Transaction{
 					AccountId:    accountId,
-					Type:         transaction.TypeDeposit,
+					Type:         transaction.TypeWithdrawal,
 					Amount:       request.Amount,
 					BalanceAfter: account.Balance,
 					Reference:    uuid.NewString(),
