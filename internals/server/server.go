@@ -4,6 +4,7 @@ import (
 	"bank-api/internals/account"
 	"bank-api/internals/auth"
 	"bank-api/internals/customer"
+	"bank-api/internals/transaction"
 	"bank-api/internals/user"
 	"net/http"
 
@@ -14,6 +15,7 @@ import (
 func NewRouter(customerHandler *customer.Handler,
 	accountHandler *account.Handler,
 	userHandler *user.Handler,
+	transactionHandler *transaction.Handler,
 	jwtManager *auth.JWTManager,
 ) http.Handler {
 	r := chi.NewRouter()
@@ -37,6 +39,8 @@ func NewRouter(customerHandler *customer.Handler,
 			r.Post("/{id}/deposit", accountHandler.Deposit)
 			r.Post("/{id}/withdraw", accountHandler.Withdraw)
 			r.Post("/{id}/transfer", accountHandler.Transfer)
+
+			r.Get("/{id}/transactions", transactionHandler.GetByAccountId)
 		})
 
 	})

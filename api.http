@@ -1,5 +1,5 @@
 @baseUrl = http://localhost:8080
-@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJjdXN0b21lcl9pZCI6MSwiZXhwIjoxNzg5NjU3NDg4LCJpYXQiOjE3ODk2NTY1ODh9.5IQjFOnQ9EXhDxWncw1fcD_-OWBTscEW3B4hKgbNpOI
+@token = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoxLCJjdXN0b21lcl9pZCI6MSwiZXhwIjoxNzkyMzMyODU1LCJpYXQiOjE3OTIyNzg4NTV9.t2a7An2FIbTG37S3pkOfeu4VigWlzYnzB5s-gRiw65o
 
 // customers get
 GET {{baseUrl}}/customers

@@ -32,7 +32,7 @@ func (r *PostgresRepository) GetByAccountId(ctx context.Context, accountId int64
 			SELECT id, account_id, type, amount, balance_after, reference, created_at
 			FROM transactions
 			WHERE account_id = $1
-			ORDER BY created_at DESC
+			ORDER BY created_at DESC, id DESC
 			`, accountId)
 
 	if err != nil {

@@ -2,12 +2,15 @@ package account
 
 import (
 	"bank-api/internals/customer"
+	"bank-api/internals/transaction"
 	"context"
 	"errors"
 	"fmt"
 	"math/rand"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 var (
@@ -26,6 +29,7 @@ var (
 	ErrSameAccount            = errors.New("source and destination accounts must be different")
 	ErrDifferentCurrency      = errors.New("source and destination accounts must have the same currency")
 )
+var _ transaction.AccountOwnershipCheck = (*Service)(nil)
 
 type CustomerChecker interface {
 	Exists(ctx context.Context, id int64) (bool, error)
@@ -116,4 +120,17 @@ func generateAccountNumber() string {
 	source := rand.NewSource(time.Now().UnixNano())
 	random := rand.New(source)
 	return fmt.Sprintf("%010d", random.Int63n(10000000000))
+}
+
+func (s *Service) IsOwnedBy(ctx context.Context, accountId int64, customerId int64) (bool, error) {
+	account, err := s.repository.GetById(ctx, accountId)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, nil
+	}
+
+	return account.CustomerID == customerId, nil
 }

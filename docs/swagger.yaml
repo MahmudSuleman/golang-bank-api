@@ -70,6 +70,23 @@ definitions:
       error:
         $ref: '#/definitions/response.Error'
     type: object
+  transaction.Transaction:
+    properties:
+      account_id:
+        type: integer
+      amount:
+        type: integer
+      balance_after:
+        type: integer
+      created_at:
+        type: string
+      id:
+        type: integer
+      reference:
+        type: string
+      type:
+        type: string
+    type: object
   user.LoginRequest:
     properties:
       email:
@@ -190,6 +207,47 @@ paths:
       summary: Deposit money into an account
       tags:
       - Accounts
+  /accounts/{id}/transactions:
+    get:
+      description: Returns the ledger entries for an account owned by the authenticated
+        customer, newest first.
+      parameters:
+      - description: Account ID
+        format: int64
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/transaction.Transaction'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Get account transactions
+      tags:
+      - Transactions
   /accounts/{id}/transfer:
     post:
       consumes:
@@ -214,9 +272,7 @@ paths:
         "200":
           description: OK
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/account.Account'
         "400":
           description: Bad Request
           schema:
